@@ -485,4 +485,10 @@ ec	EXT2_ET_INLINE_DATA_CANT_ITERATE,
 ec	EXT2_ET_EXT_ATTR_CORRUPT,
 	"Corrupt Extended attribute"
 
+ec	EXT2_ET_BAD_EXT_ATTR_MAGIC,
+	"Bad magic number in extended attribute"
+
+ec	EXT2_ET_BAD_EXTRA_SIZE,
+	"Bad i_extra_isize value in inode"
+
 	end
