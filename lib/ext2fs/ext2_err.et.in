@@ -491,4 +491,7 @@ ec	EXT2_ET_BAD_EXT_ATTR_MAGIC,
 ec	EXT2_ET_BAD_EXTRA_SIZE,
 	"Bad i_extra_isize value in inode"
 
+ec	EXT2_ET_INLINE_DATA_NO_SPACE,
+	"No free space in inline data"
+
 	end
