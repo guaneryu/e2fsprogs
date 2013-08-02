@@ -89,3 +89,36 @@ errcode_t ext2fs_new_dir_block(ext2_filsys fs, ext2_ino_t dir_ino,
 	*block = buf;
 	return 0;
 }
+
+/*
+ * Create new directory in inode
+ */
+errcode_t ext2fs_new_dir_inline_data(ext2_filsys fs,
+				     ext2_ino_t dir_ino,
+				     ext2_ino_t parent_ino,
+				     struct ext2_inode *inode)
+{
+	struct ext2_inode_large *large_inode;
+	struct ext2_dir_entry *dir = NULL;
+	int inline_size = EXT4_MIN_INLINE_DATA_SIZE;
+	errcode_t retval;
+
+	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
+
+	large_inode = (struct ext2_inode_large *) inode;
+	large_inode->i_extra_isize = sizeof(struct ext2_inode_large) -
+		EXT2_GOOD_OLD_INODE_SIZE;
+	retval = ext2fs_inline_data_create(fs, large_inode, inline_size);
+	if (retval)
+		return retval;
+
+	dir = (struct ext2_dir_entry *) inode->i_block;
+	dir->inode = parent_ino;
+
+	dir = (struct ext2_dir_entry *) ((char *) dir +
+					 EXT4_INLINE_DATA_DOTDOT_SIZE);
+	dir->inode = 0;
+	dir->rec_len = inline_size - EXT4_INLINE_DATA_DOTDOT_SIZE;
+
+	return retval;
+}

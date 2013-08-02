@@ -1362,6 +1362,9 @@ extern errcode_t ext2fs_inline_data_iterate(ext2_filsys fs,
 						  struct ext2_inode_large *inode,
 						  void *priv_data),
 				      void *priv_data);
+extern errcode_t ext2fs_inline_data_create(ext2_filsys fs,
+					   struct ext2_inode_large *inode,
+					   unsigned int len);
 
 /* inode.c */
 extern void ext2fs_free_inode_cache(struct ext2_inode_cache *icache);
@@ -1440,6 +1443,8 @@ int ext2fs_native_flag(void);
 /* newdir.c */
 extern errcode_t ext2fs_new_dir_block(ext2_filsys fs, ext2_ino_t dir_ino,
 				ext2_ino_t parent_ino, char **block);
+extern errcode_t ext2fs_new_dir_inline_data(ext2_filsys fs, ext2_ino_t dir_ino,
+				ext2_ino_t parent_ino, struct ext2_inode *inode);
 
 /* mkdir.c */
 extern errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
