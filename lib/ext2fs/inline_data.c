@@ -28,9 +28,6 @@ static void ext2fs_inline_data_finish_convert(ext2_filsys fs, ext2_ino_t ino,
 					      int inline_size);
 static void ext2fs_update_final_de(ext2_filsys fs, char *de_buf,
 				   int old_size, int new_size);
-static errcode_t ext2fs_inline_data_destory_data(ext2_filsys fs, ext2_ino_t ino,
-					   struct ext2_inode_large *inode,
-					   struct inline_data *data);
 
 errcode_t ext2fs_inline_data_find(ext2_filsys fs,
 				  struct ext2_inode_large *inode,
@@ -78,9 +75,9 @@ static void *ext2fs_get_inline_xattr_pos(struct ext2_inode_large *inode,
 	return (void *) (IFIRST(header) + entry->e_value_offs);
 }
 
-static errcode_t ext2fs_inline_data_destory_data(ext2_filsys fs, ext2_ino_t ino,
-						 struct ext2_inode_large *inode,
-						 struct inline_data *data)
+errcode_t ext2fs_inline_data_destory_data(ext2_filsys fs, ext2_ino_t ino,
+					  struct ext2_inode_large *inode,
+					  struct inline_data *data)
 {
 	struct ext2_ext_attr_ibody_header *header;
 	struct ext2_ext_attr_search s = {

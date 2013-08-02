@@ -19,6 +19,7 @@
 
 #include "ext2_fs.h"
 #include "ext2fs.h"
+#include "ext2fsP.h"
 
 #undef PUNCH_DEBUG
 
@@ -299,7 +300,59 @@ errout:
 	ext2fs_extent_free(handle);
 	return retval;
 }
-	
+
+static errcode_t ext2fs_punch_inline_data(ext2_filsys fs, ext2_ino_t ino,
+					  blk64_t start, blk64_t end)
+{
+	struct ext2_inode_large *inode;
+	struct inline_data data;
+	errcode_t retval;
+
+	/*
+	 * 'start' must be 0 because here it's a block and the size of
+	 * an inode shouldn't greater than a block.
+	 */
+	if (start != 0)
+		return 0;
+
+	/* Punching hole for inline_data is not supported */
+	if ((unsigned int)end != ~0U)
+		return EXT2_ET_OP_NOT_SUPPORTED;
+
+	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
+	if (retval)
+		return retval;
+
+	retval = ext2fs_read_inode_full(fs, ino, (void *)inode,
+					EXT2_INODE_SIZE(fs->super));
+	if (retval)
+		goto out;
+
+	retval = ext2fs_inline_data_find(fs, inode, &data);
+	if (retval)
+		goto out;
+
+	if (!data.inline_off)
+		goto out;
+
+	if (inode->i_extra_isize > (EXT2_INODE_SIZE(fs->super) -
+				    EXT2_GOOD_OLD_INODE_SIZE)) {
+		retval = EXT2_ET_BAD_EXTRA_SIZE;
+		goto out;
+	}
+
+	retval = ext2fs_inline_data_destory_data(fs, ino, inode, &data);
+	if (retval)
+		goto out;
+
+	inode->i_size = 0;
+	retval = ext2fs_write_inode_full(fs, ino, (void *)inode,
+					 EXT2_INODE_SIZE(fs->super));
+out:
+	ext2fs_free_mem(&inode);
+	return retval;
+}
+
 /*
  * Deallocate all logical blocks starting at start to end, inclusive.
  * If end is ~0, then this is effectively truncate.
@@ -322,7 +375,9 @@ extern errcode_t ext2fs_punch(ext2_filsys fs, ext2_ino_t ino,
 			return retval;
 		inode = &inode_buf;
 	}
-	if (inode->i_flags & EXT4_EXTENTS_FL)
+	if (inode->i_flags & EXT4_INLINE_DATA_FL)
+		return ext2fs_punch_inline_data(fs, ino, start, end);
+	else if (inode->i_flags & EXT4_EXTENTS_FL)
 		retval = ext2fs_punch_extent(fs, ino, inode, start, end);
 	else {
 		blk_t	count;

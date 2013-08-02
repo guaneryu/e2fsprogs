@@ -110,6 +110,9 @@ extern errcode_t ext2fs_inline_data_find(ext2_filsys fs,
 					 struct inline_data *data);
 extern errcode_t ext2fs_inline_data_convert(ext2_filsys fs, ext2_ino_t ino,
 					    void *priv_data);
+extern errcode_t ext2fs_inline_data_destory_data(ext2_filsys fs, ext2_ino_t ino,
+					   struct ext2_inode_large *inode,
+					   struct inline_data *data);
 
 /* Generic numeric progress meter */
 
