@@ -1142,6 +1142,15 @@ extern errcode_t ext2fs_adjust_ea_refcount3(ext2_filsys fs, blk64_t blk,
 					   char *block_buf,
 					   int adjust, __u32 *newcount,
 					   ext2_ino_t inum);
+extern errcode_t ext2fs_ext_attr_ibody_find(ext2_filsys fs,
+					    struct ext2_inode_large *inode,
+					    struct ext2_ext_attr_info *i,
+					    struct ext2_ext_attr_search *s);
+extern errcode_t ext2fs_ext_attr_find_entry(struct ext2_ext_attr_entry **pentry,
+					    int name_index, const char *name,
+					    size_t size, int sorted);
+extern errcode_t ext2fs_ext_attr_set_entry(struct ext2_ext_attr_info *i,
+					   struct ext2_ext_attr_search *s);
 
 /* extent.c */
 extern errcode_t ext2fs_extent_header_verify(void *ptr, int size);

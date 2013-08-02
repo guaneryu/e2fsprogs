@@ -482,4 +482,7 @@ ec	EXT2_ET_BLOCK_BITMAP_CSUM_INVALID,
 ec	EXT2_ET_INLINE_DATA_CANT_ITERATE,
 	"Cannot block iterate on an inode containing inline data"
 
+ec	EXT2_ET_EXT_ATTR_CORRUPT,
+	"Corrupt Extended attribute"
+
 	end
