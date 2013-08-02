@@ -383,6 +383,34 @@ err:
 	return retval;
 }
 
+int ext2fs_inline_data_check(ext2_filsys fs, ext2_ino_t ino)
+{
+	struct ext2_inode_large *inode;
+	struct inline_data data;
+	errcode_t retval = 0;
+	int pass = 0;
+
+	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
+	if (retval)
+		return pass;
+
+	retval = ext2fs_read_inode_full(fs, ino, (void *)inode,
+					EXT2_INODE_SIZE(fs->super));
+	if (retval)
+		goto err;
+
+	retval = ext2fs_inline_data_find(fs, inode, &data);
+	if (retval)
+		goto err;
+
+	if (data.inline_off != 0)
+		pass = 1;
+
+err:
+	ext2fs_free_mem(&inode);
+	return pass;
+}
+
 errcode_t ext2fs_inline_data_convert(ext2_filsys fs,
 				     ext2_ino_t  ino,
 				     void *priv_data)

@@ -1363,6 +1363,7 @@ extern errcode_t ext2fs_inline_data_iterate(ext2_filsys fs,
 						  struct ext2_inode_large *inode,
 						  void *priv_data),
 				      void *priv_data);
+extern int ext2fs_inline_data_check(ext2_filsys fs, ext2_ino_t ino);
 extern errcode_t ext2fs_inline_data_create(ext2_filsys fs,
 					   struct ext2_inode_large *inode,
 					   unsigned int len);
