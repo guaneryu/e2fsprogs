@@ -80,6 +80,33 @@ int ext2fs_inode_has_inline_data(ext2_filsys fs, ext2_ino_t ino)
 	return (inode.i_flags & EXT4_INLINE_DATA_FL);
 }
 
+int ext2fs_inline_data_get_size(ext2_filsys fs, ext2_ino_t ino)
+{
+	struct ext2_inode_large *inode;
+	struct inline_data data;
+	errcode_t retval = 0;
+	int size = 0;
+
+	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
+	if (retval)
+		return 0;
+	retval = ext2fs_read_inode_full(fs, ino, (void *)inode,
+					EXT2_INODE_SIZE(fs->super));
+	if (retval)
+		goto out;
+
+	if (inode->i_flags & EXT4_INLINE_DATA_FL) {
+		retval = ext2fs_inline_data_find(fs, inode, &data);
+		if (retval)
+			goto out;
+		size = data.inline_size;
+	}
+
+out:
+	ext2fs_free_mem(&inode);
+	return size;
+}
+
 errcode_t ext2fs_inline_data_iterate(ext2_filsys fs,
 			       ext2_ino_t ino,
 			       int flags,
