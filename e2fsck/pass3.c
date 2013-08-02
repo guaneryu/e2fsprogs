@@ -787,6 +787,18 @@ errcode_t e2fsck_expand_directory(e2fsck_t ctx, ext2_ino_t dir,
 	es.ctx = ctx;
 	es.dir = dir;
 
+	/*
+	 * 'lost+found' dir shouldn't contains inline data.  So we
+	 * need to clear this flag.
+	 */
+	if (ext2fs_inode_has_inline_data(fs, dir)) {
+		retval = ext2fs_read_inode(fs, dir, &inode);
+		if (retval)
+			return retval;
+		inode.i_flags &= ~EXT4_INLINE_DATA_FL;
+		e2fsck_write_inode(ctx, dir, &inode, "clear inline_data flag");
+	}
+
 	retval = ext2fs_block_iterate3(fs, dir, BLOCK_FLAG_APPEND,
 				       0, expand_dir_proc, &es);
 
