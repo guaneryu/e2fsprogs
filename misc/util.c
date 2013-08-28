@@ -32,7 +32,17 @@
 #include "ext2fs/ext2fs.h"
 #include "nls-enable.h"
 #include "blkid/blkid.h"
+
+#include <fcntl.h>
+
 #include "util.h"
+
+int	journal_size;
+int	journal_flags;
+char	*journal_device;
+
+/* For saving the hard links */
+int hdlink_cnt = HDLINK_CNT;
 
 #ifndef HAVE_STRCASECMP
 int strcasecmp (char *s1, char *s2)
@@ -302,4 +312,29 @@ void dump_mmp_msg(struct mmp_struct *mmp, const char *msg)
 		printf("MMP error info: last update: %s node: %s device: %s\n",
 		       ctime(&t), mmp->mmp_nodename, mmp->mmp_bdevname);
 	}
+}
+
+/* Make a special file which is block, character and fifo */
+errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st)
+{
+}
+
+/* Make a symlink name -> target */
+errcode_t do_symlink_internal(ext2_ino_t cwd, const char *name, char *target)
+{
+}
+
+/* Make a directory in the fs */
+errcode_t do_mkdir_internal(ext2_ino_t cwd, const char *name, struct stat *st)
+{
+}
+
+/* Copy the native file to the fs */
+errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest)
+{
+}
+
+/* Copy files from source_dir to fs */
+errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
+{
 }
