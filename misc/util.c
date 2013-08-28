@@ -314,6 +314,41 @@ void dump_mmp_msg(struct mmp_struct *mmp, const char *msg)
 	}
 }
 
+/* Fill the uid, gid, mode and time for the inode */
+static void fill_inode(struct ext2_inode *inode, struct stat *st)
+{
+	if (st != NULL) {
+		inode->i_uid = st->st_uid;
+		inode->i_gid = st->st_gid;
+		inode->i_mode |= st->st_mode;
+		inode->i_atime = st->st_atime;
+		inode->i_mtime = st->st_mtime;
+		inode->i_ctime = st->st_ctime;
+	}
+}
+
+/* Set the uid, gid, mode and time for the inode */
+errcode_t set_inode_extra(ext2_ino_t cwd, ext2_ino_t ino, struct stat *st)
+{
+	errcode_t		retval;
+	struct ext2_inode	inode;
+	char			*func_name = "set_inode_extra";
+
+	retval = ext2fs_read_inode(current_fs, ino, &inode);
+        if (retval) {
+		com_err(func_name, retval, "while reading inode %u", ino);
+		return retval;
+	}
+
+	fill_inode(&inode, st);
+
+	retval = ext2fs_write_inode(current_fs, ino, &inode);
+	if (retval) {
+		com_err(func_name, retval, "while writing inode %u", ino);
+		return retval;
+	}
+}
+
 /* Make a special file which is block, character and fifo */
 errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st)
 {
@@ -686,6 +721,17 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
 			default:
 				com_err(func_name, 0,
 					_("ignoring entry \"%s\""), name);
+		}
+
+		if ((retval =  ext2fs_namei(current_fs, root, parent_ino, name, &ino))){
+			com_err(name, retval, 0);
+			return retval;
+		}
+
+		if ((retval = set_inode_extra(parent_ino, ino, &st))) {
+			com_err(func_name, retval,
+				_("while setting inode for \"%s\""), name);
+			return retval;
 		}
 	}
 	closedir(dh);
