@@ -1127,6 +1127,15 @@ SOCKET_LIB=''
 AC_CHECK_LIB(socket, socket, [SOCKET_LIB=-lsocket])
 AC_SUBST(SOCKET_LIB)
 dnl
+dnl Check to see if the FUSE library is -lfuse or -losxfuse
+dnl
+FUSE_CMT=''
+FUSE_LIB=''
+dnl osxfuse.dylib supersedes fuselib.dylib
+AC_CHECK_LIB(osxfuse, fuse_main, [FUSE_LIB=-losxfuse], [AC_CHECK_LIB(fuse, fuse_main, [FUSE_LIB=-lfuse], [FUSE_CMT="#"])])
+AC_SUBST(FUSE_LIB)
+AC_SUBST(FUSE_CMT)
+dnl
 dnl See if optreset exists
 dnl
 AC_MSG_CHECKING(for optreset)

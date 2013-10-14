@@ -184,8 +184,8 @@ static errcode_t ext2fs_punch_extent(ext2_filsys fs, ext2_ino_t ino,
 	ext2_extent_handle_t	handle = 0;
 	struct ext2fs_extent	extent;
 	errcode_t		retval;
-	blk64_t			free_start, next;
-	__u32			free_count, newlen;
+	blk64_t			free_start, next, lfree_start, pblk;
+	__u32			free_count, newlen, cluster_freed;
 	int			freed = 0;
 	int			op;
 
@@ -211,6 +211,7 @@ static errcode_t ext2fs_punch_extent(ext2_filsys fs, ext2_ino_t ino,
 			/* Start of deleted region before extent; 
 			   adjust beginning of extent */
 			free_start = extent.e_pblk;
+			lfree_start = extent.e_lblk;
 			if (next > end)
 				free_count = end - extent.e_lblk + 1;
 			else
@@ -226,6 +227,7 @@ static errcode_t ext2fs_punch_extent(ext2_filsys fs, ext2_ino_t ino,
 			dbg_printf("Case #%d\n", 2);
 			newlen = start - extent.e_lblk;
 			free_start = extent.e_pblk + newlen;
+			lfree_start = extent.e_lblk + newlen;
 			free_count = extent.e_len - newlen;
 			extent.e_len = newlen;
 		} else {
@@ -241,6 +243,7 @@ static errcode_t ext2fs_punch_extent(ext2_filsys fs, ext2_ino_t ino,
 
 			extent.e_len = start - extent.e_lblk;
 			free_start = extent.e_pblk + extent.e_len;
+			lfree_start = extent.e_lblk + extent.e_len;
 			free_count = end - start + 1;
 
 			dbg_print_extent("inserting", &newex);
@@ -281,9 +284,26 @@ static errcode_t ext2fs_punch_extent(ext2_filsys fs, ext2_ino_t ino,
 			goto errout;
 		dbg_printf("Free start %llu, free count = %u\n",
 		       free_start, free_count);
-		while (free_count-- > 0) {
-			ext2fs_block_alloc_stats2(fs, free_start++, -1);
-			freed++;
+		while (free_count > 0) {
+			retval = ext2fs_map_cluster_block(fs, ino, inode,
+							  lfree_start, &pblk);
+			if (retval)
+				goto errout;
+			if (!pblk) {
+				ext2fs_block_alloc_stats2(fs, free_start, -1);
+				freed++;
+				cluster_freed = EXT2FS_CLUSTER_RATIO(fs) -
+					(free_start & EXT2FS_CLUSTER_MASK(fs));
+				if (cluster_freed > free_count)
+					cluster_freed = free_count;
+				free_count -= cluster_freed;
+				free_start += cluster_freed;
+				lfree_start += cluster_freed;
+				continue;
+			}
+			free_count--;
+			free_start++;
+			lfree_start++;
 		}
 	next_extent:
 		retval = ext2fs_extent_get(handle, op,

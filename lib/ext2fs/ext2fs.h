@@ -919,6 +919,9 @@ extern errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino,
 			      struct ext2_inode *inode,
 			      char *block_buf, int bmap_flags, blk64_t block,
 			      int *ret_flags, blk64_t *phys_blk);
+errcode_t ext2fs_map_cluster_block(ext2_filsys fs, ext2_ino_t ino,
+				   struct ext2_inode *inode, blk64_t lblk,
+				   blk64_t *pblk);
 
 #if 0
 /* bmove.c */
@@ -1179,6 +1182,29 @@ extern errcode_t ext2fs_extent_goto(ext2_extent_handle_t handle,
 extern errcode_t ext2fs_extent_goto2(ext2_extent_handle_t handle,
 				     int leaf_level, blk64_t blk);
 extern errcode_t ext2fs_extent_fix_parents(ext2_extent_handle_t handle);
+
+struct ext2_xattr_handle;
+errcode_t ext2fs_xattrs_expand(struct ext2_xattr_handle *h,
+			       unsigned int expandby);
+errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle);
+errcode_t ext2fs_xattrs_read(struct ext2_xattr_handle *handle);
+#define XATTR_ABORT	1
+#define XATTR_CHANGED	2
+errcode_t ext2fs_xattrs_iterate(struct ext2_xattr_handle *h,
+				int (*func)(char *name, char *value,
+					    void *data),
+				void *data);
+errcode_t ext2fs_xattr_get(struct ext2_xattr_handle *h, const char *key,
+			   void **value, unsigned int *value_len);
+errcode_t ext2fs_xattr_set(struct ext2_xattr_handle *handle,
+			   const char *key,
+			   const void *value,
+			   unsigned int value_len);
+errcode_t ext2fs_xattr_remove(struct ext2_xattr_handle *handle,
+			      const char *key);
+errcode_t ext2fs_xattrs_open(ext2_filsys fs, ext2_ino_t ino,
+			     struct ext2_xattr_handle **handle);
+errcode_t ext2fs_xattrs_close(struct ext2_xattr_handle **handle);
 
 /* fileio.c */
 extern errcode_t ext2fs_file_open2(ext2_filsys fs, ext2_ino_t ino,
