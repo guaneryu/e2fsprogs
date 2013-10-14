@@ -2779,26 +2779,8 @@ no_journal:
 				       EXT4_FEATURE_RO_COMPAT_QUOTA))
 		create_quota_inodes(fs);
 
-	if (!quiet)
-		printf(_("Writing superblocks and "
-		       "filesystem accounting information: "));
 	checkinterval = fs->super->s_checkinterval;
 	max_mnt_count = fs->super->s_max_mnt_count;
-	if (retval) {
-		fprintf(stderr,
-			_("\nWarning, had trouble writing out superblocks."));
-	} else if (!quiet) {
-		printf(_("done\n\n"));
-		if (!getenv("MKE2FS_SKIP_CHECK_MSG"))
-			print_check_message(max_mnt_count, checkinterval);
-	}
-
-	remove_error_table(&et_ext2_error_table);
-	remove_error_table(&et_prof_error_table);
-	profile_release(profile);
-	for (i=0; fs_types[i]; i++)
-		free(fs_types[i]);
-	free(fs_types);
 
 	/* Copy files from the specified directory */
 	if (root_dir) {
@@ -2824,7 +2806,25 @@ no_journal:
 				_("\nError while populating %s"), root_dir);
 	}
 
+	if (!quiet)
+		printf(_("Writing superblocks and "
+		       "filesystem accounting information: "));
 	retval = ext2fs_close(fs);
+	if (retval) {
+		fprintf(stderr,
+			_("\nWarning, had trouble writing out superblocks."));
+	} else if (!quiet) {
+		printf(_("done\n\n"));
+		if (!getenv("MKE2FS_SKIP_CHECK_MSG"))
+			print_check_message(max_mnt_count, checkinterval);
+	}
+
+	remove_error_table(&et_ext2_error_table);
+	remove_error_table(&et_prof_error_table);
+	profile_release(profile);
+	for (i=0; fs_types[i]; i++)
+		free(fs_types[i]);
+	free(fs_types);
 
 	return retval;
 }
