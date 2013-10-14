@@ -594,7 +594,8 @@ typedef struct ext2_icount *ext2_icount_t;
 					 EXT3_FEATURE_INCOMPAT_EXTENTS|\
 					 EXT4_FEATURE_INCOMPAT_FLEX_BG|\
 					 EXT4_LIB_INCOMPAT_MMP|\
-					 EXT4_FEATURE_INCOMPAT_64BIT)
+					 EXT4_FEATURE_INCOMPAT_64BIT|\
+					 EXT4_FEATURE_INCOMPAT_INLINE_DATA)
 
 #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
 					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
@@ -1142,6 +1143,15 @@ extern errcode_t ext2fs_adjust_ea_refcount3(ext2_filsys fs, blk64_t blk,
 					   char *block_buf,
 					   int adjust, __u32 *newcount,
 					   ext2_ino_t inum);
+extern errcode_t ext2fs_ext_attr_ibody_find(ext2_filsys fs,
+					    struct ext2_inode_large *inode,
+					    struct ext2_ext_attr_info *i,
+					    struct ext2_ext_attr_search *s);
+extern errcode_t ext2fs_ext_attr_find_entry(struct ext2_ext_attr_entry **pentry,
+					    int name_index, const char *name,
+					    size_t size, int sorted);
+extern errcode_t ext2fs_ext_attr_set_entry(struct ext2_ext_attr_info *i,
+					   struct ext2_ext_attr_search *s);
 
 /* extent.c */
 extern errcode_t ext2fs_extent_header_verify(void *ptr, int size);
@@ -1339,6 +1349,32 @@ errcode_t ext2fs_icount_validate(ext2_icount_t icount, FILE *);
 extern errcode_t ext2fs_get_memalign(unsigned long size,
 				     unsigned long align, void *ptr);
 
+/* inline_data.c */
+extern int ext2fs_inode_has_inline_data(ext2_filsys fs, ext2_ino_t ino);
+extern int ext2fs_inline_data_get_size(ext2_filsys fs, ext2_ino_t ino);
+extern errcode_t ext2fs_inline_data_iterate(ext2_filsys fs,
+				      ext2_ino_t ino,
+				      int flags,
+				      char *block_buf,
+				      int (*func)(ext2_filsys fs,
+						  char *buf,
+						  unsigned int buf_len,
+						  e2_blkcnt_t blockcnt,
+						  struct ext2_inode_large *inode,
+						  void *priv_data),
+				      void *priv_data);
+extern int ext2fs_inline_data_check(ext2_filsys fs, ext2_ino_t ino);
+extern errcode_t ext2fs_inline_data_create(ext2_filsys fs,
+					   struct ext2_inode_large *inode,
+					   unsigned int len);
+extern errcode_t ext2fs_read_inline_data(ext2_filsys fs, ext2_ino_t ino,
+					 char *buf);
+extern errcode_t ext2fs_write_inline_data(ext2_filsys fs, ext2_ino_t ino,
+					  char *buf);
+extern errcode_t ext2fs_try_to_write_inline_data(ext2_filsys fs, ext2_ino_t ino,
+						 const void *buf, unsigned int nbytes,
+						 unsigned int *written);
+
 /* inode.c */
 extern void ext2fs_free_inode_cache(struct ext2_inode_cache *icache);
 extern errcode_t ext2fs_flush_icache(ext2_filsys fs);
@@ -1416,6 +1452,8 @@ int ext2fs_native_flag(void);
 /* newdir.c */
 extern errcode_t ext2fs_new_dir_block(ext2_filsys fs, ext2_ino_t dir_ino,
 				ext2_ino_t parent_ino, char **block);
+extern errcode_t ext2fs_new_dir_inline_data(ext2_filsys fs, ext2_ino_t dir_ino,
+				ext2_ino_t parent_ino, struct ext2_inode *inode);
 
 /* mkdir.c */
 extern errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,

@@ -593,6 +593,17 @@ struct problem_context {
 #define PR_1_EXTENT_INDEX_START_INVALID	0x01006D
 
 #define PR_1_EXTENT_END_OUT_OF_BOUNDS	0x01006E
+
+/* INLINE_DATA feature is set, but EXT_ATTR missing */
+#define PR_1_INLINE_DATA_AND_EXT_ATTR  0x01006F
+
+/* Inode has inline data, but superblock is missing INLINE_DATA feature. */
+#define PR_1_INLINE_DATA_FEATURE       0x010070
+
+/* INLINE_DATA feature is set in a non-inline-data filesystem */
+#define PR_1_INLINE_DATA_SET	       0x010071
+
+
 /*
  * Pass 1b errors
  */

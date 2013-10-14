@@ -914,4 +914,12 @@ struct mmp_struct {
  */
 #define EXT4_MMP_MIN_CHECK_INTERVAL     5
 
+struct inline_data {
+	__u16	inline_off;
+	__u16	inline_size;
+};
+
+#define EXT4_MIN_INLINE_DATA_SIZE	((sizeof(__u32) * EXT2_N_BLOCKS))
+#define EXT4_INLINE_DATA_DOTDOT_SIZE	(4)
+
 #endif	/* _LINUX_EXT2_FS_H */

@@ -186,3 +186,189 @@ errcode_t ext2fs_adjust_ea_refcount(ext2_filsys fs, blk_t blk,
 	return ext2fs_adjust_ea_refcount2(fs, blk, block_buf, adjust,
 					  newcount);
 }
+
+static errcode_t
+ext2fs_ext_attr_check_names(struct ext2_ext_attr_entry *entry, void *end)
+{
+	while (!EXT2_EXT_IS_LAST_ENTRY(entry)) {
+		struct ext2_ext_attr_entry *next = EXT2_EXT_ATTR_NEXT(entry);
+		if ((void *)next >= end)
+			return EXT2_ET_EXT_ATTR_CORRUPT;
+		entry = next;
+	}
+	return 0;
+}
+
+static inline errcode_t
+ext2fs_ext_attr_check_entry(struct ext2_ext_attr_entry *entry, size_t size)
+{
+	size_t value_size = entry->e_value_size;
+
+	if (entry->e_value_block != 0 || value_size > size ||
+	    entry->e_value_offs + value_size > size)
+		return EXT2_ET_EXT_ATTR_CORRUPT;
+	return 0;
+}
+
+errcode_t ext2fs_ext_attr_find_entry(struct ext2_ext_attr_entry **pentry,
+				     int name_index, const char *name,
+				     size_t size, int sorted)
+{
+	struct ext2_ext_attr_entry *entry;
+	size_t name_len;
+	int cmp = 1;
+
+	if (name == NULL)
+		return EXT2_ET_INVALID_ARGUMENT;
+	name_len = strlen(name);
+	for (entry = *pentry; !EXT2_EXT_IS_LAST_ENTRY(entry);
+	     entry = EXT2_EXT_ATTR_NEXT(entry)) {
+		cmp = name_index - entry->e_name_index;
+		if (!cmp)
+			cmp = name_len - entry->e_name_len;
+		if (!cmp)
+			cmp = memcmp(name, EXT2_EXT_ATTR_NAME(entry),
+				     name_len);
+		if (cmp <= 0 && (sorted || cmp == 0))
+			break;
+	}
+	*pentry = entry;
+	if (!cmp && ext2fs_ext_attr_check_entry(entry, size))
+		return EXT2_ET_EXT_ATTR_CORRUPT;
+	return cmp ? ENODATA : 0;
+}
+
+errcode_t ext2fs_ext_attr_ibody_find(ext2_filsys fs,
+				     struct ext2_inode_large *inode,
+				     struct ext2_ext_attr_info *i,
+				     struct ext2_ext_attr_search *s)
+{
+	struct ext2_ext_attr_ibody_header *header;
+	errcode_t error;
+
+	if (inode->i_extra_isize == 0)
+		return 0;
+	header = IHDR(inode);
+	s->base = s->first = IFIRST(header);
+	s->here = s->first;
+	s->end = (char *)inode + EXT2_INODE_SIZE(fs->super);
+
+	error = ext2fs_ext_attr_check_names(IFIRST(header), s->end);
+	if (error)
+		return error;
+	/* Find the named attribute. */
+	error = ext2fs_ext_attr_find_entry(&s->here, i->name_index,
+					   i->name, (char *)s->end -
+					   (char *)s->base, 0);
+	if (error && error != ENODATA)
+		return error;
+	s->not_found = error;
+	return 0;
+}
+
+errcode_t ext2fs_ext_attr_set_entry(struct ext2_ext_attr_info *i,
+				    struct ext2_ext_attr_search *s)
+{
+	struct ext2_ext_attr_entry *last;
+	size_t freesize, min_offs = (char *)s->end - (char *)s->base;
+	size_t name_len = strlen(i->name);
+
+	/* Compute min_offs and last. */
+	last = s->first;
+	for (; !EXT2_EXT_IS_LAST_ENTRY(last); last = EXT2_EXT_ATTR_NEXT(last)) {
+		if (!last->e_value_block && last->e_value_size) {
+			size_t offs = last->e_value_offs;
+			if (offs < min_offs)
+				min_offs = offs;
+		}
+	}
+	freesize = min_offs - ((char *)last - (char *)s->base) - sizeof(__u32);
+	if (!s->not_found) {
+		if (!s->here->e_value_block && s->here->e_value_size) {
+			size_t size = s->here->e_value_size;
+			freesize += EXT2_EXT_ATTR_SIZE(size);
+		}
+		freesize += EXT2_EXT_ATTR_LEN(name_len);
+	}
+	if (i->value) {
+		if (freesize < EXT2_EXT_ATTR_SIZE(i->value_len) ||
+		    freesize < EXT2_EXT_ATTR_LEN(name_len) +
+			   EXT2_EXT_ATTR_SIZE(i->value_len))
+			return ENOSPC;
+	}
+
+	if (i->value && s->not_found) {
+		/* Insert the new name. */
+		size_t size = EXT2_EXT_ATTR_LEN(name_len);
+		size_t rest = (char *)last - (char *)s->here + sizeof(__u32);
+		memmove((char *)s->here + size, s->here, rest);
+		memset(s->here, 0, size);
+		s->here->e_name_index = i->name_index;
+		s->here->e_name_len = name_len;
+		memcpy(EXT2_EXT_ATTR_NAME(s->here), i->name, name_len);
+	} else {
+		if (!s->here->e_value_block && s->here->e_value_size) {
+			char *first_val = (char *) s->base + min_offs;
+			size_t offs = s->here->e_value_offs;
+			char *val = (char *)s->base + offs;
+			size_t size = EXT2_EXT_ATTR_SIZE(s->here->e_value_size);
+
+			if (i->value && size == EXT2_EXT_ATTR_SIZE(i->value_len)) {
+				/* The old and the new value have the same
+				 * size. Just replace. */
+				s->here->e_value_size = i->value_len;
+				if (i->value == EXT2_ZERO_EXT_ATTR_VALUE) {
+					memset(val, 0, size);
+				} else {
+					memset(val + size - EXT2_EXT_ATTR_PAD, 0,
+						EXT2_EXT_ATTR_PAD);
+					memcpy(val, i->value, i->value_len);
+				}
+				return 0;
+			}
+
+			/* Remove the old value. */
+			memmove(first_val + size, first_val, val - first_val);
+			memset(first_val, 0, size);
+			s->here->e_value_size = 0;
+			s->here->e_value_offs = 0;
+			min_offs += size;
+
+			/* Adjust all value offsets. */
+			last = s->first;
+			while (!EXT2_EXT_IS_LAST_ENTRY(last)) {
+				size_t o = last->e_value_offs;
+				if (!last->e_value_block &&
+				    last->e_value_size && o < offs)
+					last->e_value_offs = o + size;
+				last = EXT2_EXT_ATTR_NEXT(last);
+			}
+		}
+		if (!i->value) {
+			/* Remove the old name. */
+			size_t size = EXT2_EXT_ATTR_LEN(name_len);
+			last = (struct ext2_ext_attr_entry *)last - size;
+			memmove(s->here, (char *)s->here + size,
+				(char *)last - (char *)s->here + sizeof(__u32));
+			memset(last, 0, size);
+		}
+	}
+
+	if (i->value) {
+		/* Insert the new value. */
+		s->here->e_value_size = i->value_len;
+		if (i->value_len) {
+			size_t size = EXT2_EXT_ATTR_SIZE(i->value_len);
+			char *val = (char *)s->base + min_offs - size;
+			s->here->e_value_offs = min_offs - size;
+			if (i->value == EXT2_ZERO_EXT_ATTR_VALUE) {
+				memset(val, 0, size);
+			} else {
+				memset(val + size - EXT2_EXT_ATTR_PAD, 0,
+					EXT2_EXT_ATTR_PAD);
+				memcpy(val, i->value, i->value_len);
+			}
+		}
+	}
+	return 0;
+}

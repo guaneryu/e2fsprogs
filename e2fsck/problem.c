@@ -1018,6 +1018,20 @@ static struct e2fsck_problem problem_table[] = {
 	  N_("@i %i, end of extent exceeds allowed value\n\t(logical @b %c, physical @b %b, len %N)\n"),
 	  PROMPT_CLEAR, 0 },
 
+	/* INLINE_DATA feature is set, but EXT_ATTR missing */
+	{ PR_1_INLINE_DATA_AND_EXT_ATTR,
+	  N_("INLINE_DATA feature is set in @S, but EXT_ATTR feature missing\n"),
+	  PROMPT_FIX, 0 },
+
+	/* Inode has inline data, but superblock is missing INLINE_DATA feature. */
+	{ PR_1_INLINE_DATA_FEATURE,
+	  N_("@i %i has inline data, but @S is missing INLINE_DATA feature\n"),
+	  PROMPT_CLEAR, PR_PREEN_OK },
+
+	/* INLINE_DATA feature is set in a non-inline-data filesystem */
+	{ PR_1_INLINE_DATA_SET,
+	  N_("@i %i has INLINE_DATA_FL flag on @f without inline data support.\n"),
+	  PROMPT_CLEAR, 0 },
 
 	/* Pass 1b errors */
 

@@ -62,6 +62,17 @@ struct dir_context {
 };
 
 /*
+ * For expanding directory
+ */
+struct expand_dir_struct {
+	int		done;
+	int		newblocks;
+	blk64_t		goal;
+	errcode_t	err;
+	ext2_ino_t	dir;
+};
+
+/*
  * Inode cache structure
  */
 struct ext2_inode_cache {
@@ -86,6 +97,22 @@ extern int ext2fs_process_dir_block(ext2_filsys  	fs,
 				    blk64_t		ref_block,
 				    int			ref_offset,
 				    void		*priv_data);
+
+extern int ext2fs_process_dir_inline_data(ext2_filsys	fs,
+					  char		*buf,
+					  unsigned int	buf_len,
+					  e2_blkcnt_t	blockcnt,
+					  struct ext2_inode_large *inode,
+					  void		*priv_data);
+
+extern errcode_t ext2fs_inline_data_find(ext2_filsys fs,
+					 struct ext2_inode_large *inode,
+					 struct inline_data *data);
+extern errcode_t ext2fs_inline_data_convert(ext2_filsys fs, ext2_ino_t ino,
+					    void *priv_data);
+extern errcode_t ext2fs_inline_data_destory_data(ext2_filsys fs, ext2_ino_t ino,
+					   struct ext2_inode_large *inode,
+					   struct inline_data *data);
 
 /* Generic numeric progress meter */
 
