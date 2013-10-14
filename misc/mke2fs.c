@@ -44,8 +44,6 @@ extern int optind;
 #include <errno.h>
 #endif
 #include <sys/ioctl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <libgen.h>
 #include <limits.h>
 #include <blkid/blkid.h>
@@ -105,6 +103,7 @@ char *mount_dir;
 char *journal_device;
 int sync_kludge;	/* Set using the MKE2FS_SYNC env. option */
 char **fs_types;
+const char *root_dir;  /* Copy files from the specified directory */
 
 profile_t	profile;
 
@@ -116,7 +115,8 @@ static void usage(void)
 	fprintf(stderr, _("Usage: %s [-c|-l filename] [-b block-size] "
 	"[-C cluster-size]\n\t[-i bytes-per-inode] [-I inode-size] "
 	"[-J journal-options]\n"
-	"\t[-G flex-group-size] [-N number-of-inodes]\n"
+	"\t[-G flex-group-size] [-N number-of-inodes] "
+	"[-d root-directory]\n"
 	"\t[-m reserved-blocks-percentage] [-o creator-os]\n"
 	"\t[-g blocks-per-group] [-L volume-label] "
 	"[-M last-mounted-directory]\n\t[-O feature[,...]] "
@@ -1387,7 +1387,7 @@ profile_error:
 	}
 
 	while ((c = getopt (argc, argv,
-		    "b:cg:i:jl:m:no:qr:s:t:vC:DE:FG:I:J:KL:M:N:O:R:ST:U:V")) != EOF) {
+		    "b:cg:i:jl:m:no:qr:s:t:d:vC:DE:FG:I:J:KL:M:N:O:R:ST:U:V")) != EOF) {
 		switch (c) {
 		case 'b':
 			blocksize = parse_num_blocks2(optarg, -1);
@@ -1572,6 +1572,9 @@ profile_error:
 			break;
 		case 'U':
 			fs_uuid = optarg;
+			break;
+		case 'd':
+			root_dir = optarg;
 			break;
 		case 'v':
 			verbose = 1;
@@ -2788,11 +2791,36 @@ no_journal:
 				       EXT4_FEATURE_RO_COMPAT_QUOTA))
 		create_quota_inodes(fs);
 
+	checkinterval = fs->super->s_checkinterval;
+	max_mnt_count = fs->super->s_max_mnt_count;
+
+	/* Copy files from the specified directory */
+	if (root_dir) {
+		if (!quiet)
+			printf(_("Copying files into the device...\n"));
+
+		/*
+		 * Allocate memory for the hardlinks, we don't need free()
+		 * since the lifespan will be over after the fs populated.
+		 */
+		if ((hdlinks.hdl = (struct hdlink_s *)
+				malloc(hdlink_cnt * sizeof(struct hdlink_s))) == NULL) {
+			fprintf(stderr, _("\nNot enough memory"));
+			retval = ext2fs_close(fs);
+			return retval;
+		}
+
+		current_fs = fs;
+		root = EXT2_ROOT_INO;
+		retval = populate_fs(root, root_dir);
+		if (retval)
+			fprintf(stderr,
+				_("\nError while populating %s"), root_dir);
+	}
+
 	if (!quiet)
 		printf(_("Writing superblocks and "
 		       "filesystem accounting information: "));
-	checkinterval = fs->super->s_checkinterval;
-	max_mnt_count = fs->super->s_max_mnt_count;
 	retval = ext2fs_close(fs);
 	if (retval) {
 		fprintf(stderr,
@@ -2809,5 +2837,6 @@ no_journal:
 	for (i=0; fs_types[i]; i++)
 		free(fs_types[i]);
 	free(fs_types);
+
 	return retval;
 }
