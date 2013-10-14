@@ -5,7 +5,6 @@
 #include "ss/ss.h"
 #include "ext2fs/ext2_fs.h"
 #include "ext2fs/ext2fs.h"
-#include "../misc/util.h"
 
 #ifdef __STDC__
 #define NOARGS void
